@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block header_title %}Reportes{% endblock %}
+
+{% block content %}
+<h2 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Registro de Novedades</h2>
+
+<div class="card glass">
+    <form method="POST" action="/reports/add">
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <label class="form-label">Máquina</label>
+                <select name="machine" class="form-control" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="T11">T11</option>
+                    <option value="T12">T12</option>
+                    <option value="T14">T14</option>
+                    <option value="T15">T15</option>
+                    <option value="T16">T16</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Tipo</label>
+                <select name="type" class="form-control" required>
+                    <option value="mecanica">Mecánica</option>
+                    <option value="electrica">Eléctrica</option>
+                    <option value="calidad">Calidad</option>
+                    <option value="material">Material</option>
+                </select>
+            </div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label class="form-label">Duración (horas)</label>
+            <input type="number" name="hours" class="form-control" step="0.5" min="0" required>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label class="form-label">Descripción</label>
+            <textarea name="description" class="form-control" rows="3" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Registrar Novedad</button>
+    </form>
+</div>
+
+<div class="card glass" style="margin-top: 2rem;">
+    <h3 style="color: var(--accent-blue);">Historial Reciente</h3>
+    <p style="color: #94A3B8;">Funcionalidad en desarrollo</p>
+</div>
+{% endblock %}
