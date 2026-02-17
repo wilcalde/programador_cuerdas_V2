@@ -1,69 +1,73 @@
 {% extends "base.html" %}
 
-{% block header_title %}Consultor IA{% endblock %}
+{% block header_title %}🤖 Consultoría IA (Ciplas AI-Master Cord){% endblock %}
 
 {% block content %}
-<h2 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Consultor IA de Producción</h2>
-
-<div class="card glass" style="margin-bottom: 2rem;">
-    <div id="chatBox" style="height: 400px; overflow-y: auto; padding: 1rem; margin-bottom: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
-        <div style="color: var(--accent-blue); padding: 0.5rem;">
-            <strong>IA:</strong> ¡Hola! Soy tu asistente de producción. ¿En qué puedo ayudarte?
+<div class="card glass" style="height: 60vh; display: flex; flex-direction: column;">
+    <div id="chat-box" style="flex-grow: 1; overflow-y: auto; padding: 1rem;">
+        <div class="message assistant"
+            style="background: rgba(56, 189, 248, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; align-self: flex-start; max-width: 80%;">
+            ¿Cómo optimizamos hoy? Estoy listo para analizar tu backlog y planta.
         </div>
     </div>
-    
-    <div style="display: flex; gap: 1rem;">
-        <input type="text" id="chatInput" class="form-control" placeholder="Escribe tu consulta..." 
-               style="flex: 1;" onkeypress="if(event.key==='Enter') sendMessage()">
-        <button class="btn btn-primary" onclick="sendMessage()">Enviar</button>
+
+    <div style="padding: 1.5rem; border-top: 1px solid var(--border-color);">
+        <div style="display: flex; gap: 1rem;">
+            <input type="text" id="user-input" placeholder="Pregunta algo sobre la producción..." class="form-control"
+                style="flex-grow: 1;">
+            <button class="btn btn-primary" onclick="sendMessage()">Enviar</button>
+        </div>
     </div>
 </div>
 
-<div class="card glass">
-    <h3 style="color: var(--accent-blue);">Escenario Automático</h3>
-    <p style="color: #94A3B8;">Genera un escenario de optimización basado en el backlog actual.</p>
-    <button class="btn btn-primary" onclick="generateScenario()">
-        <i class="bi bi-magic"></i> Generar Escenario
+<div style="margin-top: 1.5rem;">
+    <button class="btn glass" onclick="generateScenario()"
+        style="border: 1px solid var(--accent-blue); color: var(--accent-blue); width: 100%;">
+        Generar Escenario Óptimo (Auto)
     </button>
-    <div id="scenarioResult" style="margin-top: 1rem;"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-async function sendMessage() {
-    const input = document.getElementById('chatInput');
-    const msg = input.value.trim();
-    if (!msg) return;
-    
-    const chatBox = document.getElementById('chatBox');
-    chatBox.innerHTML += `<div style="text-align: right; padding: 0.5rem;"><strong>Tú:</strong> ${msg}</div>`;
-    input.value = '';
-    
-    try {
-        const res = await fetch('/api/ai_chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: msg})
-        });
-        const data = await res.json();
-        const reply = data.response || data.error || 'Sin respuesta';
-        chatBox.innerHTML += `<div style="color: var(--accent-blue); padding: 0.5rem;"><strong>IA:</strong> ${reply}</div>`;
-    } catch(e) {
-        chatBox.innerHTML += `<div style="color: #EF4444; padding: 0.5rem;">Error de conexión</div>`;
-    }
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
+    async function sendMessage() {
+        const input = document.getElementById('user-input');
+        const box = document.getElementById('chat-box');
+        if (!input.value) return;
 
-async function generateScenario() {
-    document.getElementById('scenarioResult').innerHTML = '<p style="color: var(--accent-blue);">Generando...</p>';
-    try {
-        const res = await fetch('/api/ai_scenario', { method: 'POST', headers: {'Content-Type': 'application/json'} });
-        const data = await res.json();
-        document.getElementById('scenarioResult').innerHTML = `<pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow: auto;">${JSON.stringify(data, null, 2)}</pre>`;
-    } catch(e) {
-        document.getElementById('scenarioResult').innerHTML = `<p style="color: #EF4444;">Error: ${e.message}</p>`;
+        const userMsg = input.value;
+        box.innerHTML += `<div class="message user" style="background: rgba(99, 102, 241, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; align-self: flex-end; max-width: 80%; margin-left: auto;">${userMsg}</div>`;
+        input.value = '';
+        box.scrollTop = box.scrollHeight;
+
+        try {
+            const response = await fetch('/api/ai_chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMsg })
+            });
+            const data = await response.json();
+
+            box.innerHTML += `<div class="message assistant" style="background: rgba(56, 189, 248, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; align-self: flex-start; max-width: 80%;">${data.response || data.error}</div>`;
+            box.scrollTop = box.scrollHeight;
+        } catch (err) {
+            console.error(err);
+        }
     }
-}
+
+    async function generateScenario() {
+        const box = document.getElementById('chat-box');
+        box.innerHTML += `<div class="message assistant" style="background: rgba(56, 189, 248, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; align-self: flex-start; max-width: 80%;">🚀 Generando escenario de optimización automática...</div>`;
+        box.scrollTop = box.scrollHeight;
+
+        try {
+            const response = await fetch('/api/ai_scenario', { method: 'POST' });
+            const data = await response.json();
+            box.innerHTML += `<div class="message assistant" style="background: rgba(56, 189, 248, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; align-self: flex-start; max-width: 80%; border-left: 4px solid var(--accent-blue);">${data.response}</div>`;
+            box.scrollTop = box.scrollHeight;
+        } catch (err) {
+            console.error(err);
+        }
+    }
 </script>
 {% endblock %}

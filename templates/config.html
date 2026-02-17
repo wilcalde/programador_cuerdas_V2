@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .tab-content {
+        display: none;
+        transition: opacity 0.3s;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .tab-item {
+        transition: all 0.2s;
+    }
+
+    .tab-item:hover {
+        color: var(--accent-blue);
+    }
+
+    .tab-item.active {
+        border-bottom: 2px solid var(--accent-blue);
+        color: var(--accent-blue);
+        font-weight: 600;
+    }
+
+    .config-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .config-table th,
+    .config-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .config-table th {
+        color: #94A3B8;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .input-field {
+        width: 100%;
+        padding: 0.5rem;
+    }
+
+    .machine-selector {
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .machine-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--card-bg);
+        cursor: pointer;
+        color: var(--text-color);
+    }
+
+    .machine-btn.active {
+        background: var(--accent-blue);
+        color: white;
+        border-color: var(--accent-blue);
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}⚙️ Configuración de Línea (V2){% endblock %}
+
+{% block content %}
+<div class="card glass">
+    <!-- Tabs Navigation -->
+    <div class="tabs"
+        style="display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem;">
+        <div class="tab-item active" onclick="switchTab('torsion', this)">Torsión</div>
+        <div class="tab-item" onclick="switchTab('rewinder', this)">Rewinder</div>
+        <div class="tab-item" onclick="switchTab('catalog', this)">Catálogo</div>
+        <div class="tab-item" onclick="switchTab('shifts', this)">Turnos</div>
+        <div class="tab-item" onclick="switchTab('cabuyas', this)">Inventarios Cabuyas</div>
+    </div>
+
+    <!-- Torsion Content -->
+    <div id="tab-torsion" class="tab-content active">
+        <h3>Configuración por Máquina y Denier</h3>
+        <p style="color: #94A3B8; margin-bottom: 2rem;">Seleccione una máquina para ajustar los parámetros de
+            producción.</p>
+
+        <div class="machine-selector">
+            {% for machine in machines %}
+            <button class="machine-btn" onclick="selectMachine('{{ machine.id }}', this)">
+                🏭 {{ machine.id }}
+            </button>
+            {% endfor %}
+        </div>
+
+        {% for machine in machines %}
+        <div id="machine-config-{{ machine.id }}" class="machine-config-pane" style="display: none;">
+            <form action="/config/torsion/update" method="POST">
+                <input type="hidden" name="machine_id" value="{{ machine.id }}">
+                <table class="config-table">
+                    <thead>
+                        <tr>
+                            <th>Denier</th>
+                            <th>RPM</th>
+                            <th>T/m</th>
+                            <th>Husos</th>
+                            <th>Kg/h Calculado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in deniers %}
+                        {% set denier_name = d.name %}
+                        {% set denier_safe = denier_name.replace(' ', '_') %}
+                        {% set config = machine_configs.get(machine.id, {}).get(denier_name, {}) %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ denier_name }}</td>
+                            <td><input type="number" name="rpm_{{ denier_safe }}" class="input-field"
+                                    value="{{ config.rpm or 0 }}"
+                                    onchange="calculateKgh(this, '{{ denier_name }}', '{{ machine.id }}')"></td>
+                            <td><input type="number" name="torsiones_{{ denier_safe }}" class="input-field"
+                                    value="{{ config.torsiones_metro or 0 }}"
+                                    onchange="calculateKgh(this, '{{ denier_name }}', '{{ machine.id }}')"></td>
+                            <td><input type="number" name="husos_{{ denier_safe }}" class="input-field"
+                                    value="{{ config.husos or 0 }}"
+                                    onchange="calculateKgh(this, '{{ denier_name }}', '{{ machine.id }}')"></td>
+                            <td>
+                                <span id="kgh-{{ machine.id }}-{{ denier_safe }}" class="metric-value"
+                                    style="font-size: 1rem;">
+                                    {% if config.rpm and config.torsiones_metro and config.husos %}
+                                    {% set denier_val = denier_name.split(' ')[0]|float %}
+                                    {{ "%.2f"|format((config.rpm / config.torsiones_metro) * 60 * (denier_val /
+                                    9000000) * config.husos) }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </span> Kg/h
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">💾 Guardar
+                    Configuraciones de {{ machine.id }}</button>
+            </form>
+        </div>
+        {% endfor %}
+
+        <div id="torsion-placeholder" style="text-align: center; padding: 4rem; color: #475569;">
+            <i class="bi bi-arrow-up" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+            Seleccione una máquina arriba para comenzar.
+        </div>
+    </div>
+
+    <!-- Rewinder Content -->
+    <div id="tab-rewinder" class="tab-content">
+        <h3>Configuración Rewinder por Denier</h3>
+        <p style="color: #94A3B8; margin-bottom: 1rem;">Mp: Máquina Parada (seg) | Tm: Tiempo Máquina (min)</p>
+
+        <form action="/config/rewinder/update" method="POST">
+            <table class="config-table">
+                <thead>
+                    <tr>
+                        <th>Denier</th>
+                        <th>Mp (seg)</th>
+                        <th>Tm (min)</th>
+                        <th>Máq/Op (N)</th>
+                        <th>Kg/Hora (80%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in deniers %}
+                    {% set denier_name = d.name %}
+                    {% set denier_safe = denier_name.replace(' ', '_') %}
+                    {% set config = rewinder_configs.get(denier_name, {}) %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ denier_name }}</td>
+                        <td><input type="number" step="0.1" name="mp_{{ denier_safe }}" class="input-field"
+                                value="{{ config.mp_segundos or 37.0 }}"
+                                onchange="calculateRewinder(this, '{{ denier_name }}')"></td>
+                        <td><input type="number" step="0.1" name="tm_{{ denier_safe }}" class="input-field"
+                                value="{{ config.tm_minutos or 0.0 }}"
+                                onchange="calculateRewinder(this, '{{ denier_name }}')"></td>
+                        <td id="n-{{ denier_safe }}" style="font-weight: 600; color: var(--primary);">
+                            {% if config.tm_minutos and config.mp_segundos %}
+                            {{ "%.0f"|format((config.tm_minutos * 60) / config.mp_segundos) }}
+                            {% else %}-{% endif %}
+                        </td>
+                        <td id="kgh-rw-{{ denier_safe }}" style="font-weight: 600; color: var(--success);">
+                            {% if config.tm_minutos %}
+                            <span style="color: var(--accent-blue); font-weight: 700;">{{ "%.1f"|format((60 /
+                                config.tm_minutos) * 0.8) }}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">💾 Guardar
+                Configuraciones Rewinder</button>
+        </form>
+    </div>
+
+    <!-- Catalog Content -->
+    <div id="tab-catalog" class="tab-content">
+        <h3>Catálogo de Deniers</h3>
+        <div style="max-width: 500px; margin-top: 2rem;">
+            <form action="/config/denier/add" method="POST" class="card" style="background: rgba(0,0,0,0.1);">
+                <div class="form-group">
+                    <label>Nombre del Denier</label>
+                    <input type="text" name="name" class="input-field" placeholder="Ej: 7500" required>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Ciclo Estándar (seg)</label>
+                    <input type="number" step="0.1" name="cycle" class="input-field" value="37.0" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">➕ Añadir
+                    Denier</button>
+            </form>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <h4>Deniers Registrados</h4>
+            <div class="grid" style="margin-top: 1rem;">
+                {% for d in deniers %}
+                <div class="card glass" style="padding: 1rem; text-align: center;">
+                    <div style="font-weight: 700; color: var(--accent-blue);">{{ d.name }}</div>
+                    <div style="font-size: 0.8rem; color: #94A3B8;">{{ d.cycle_time_standard }}s</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Shifts Content -->
+    <div id="tab-shifts" class="tab-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h3>Planificación de Turnos</h3>
+                <p style="color: #94A3B8;">Horizonte de 30 días para la capacidad de planta.</p>
+            </div>
+            <div class="glass"
+                style="padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.8rem; color: var(--accent-blue);">
+                <i class="bi bi-info-circle"></i> Define horas disponibles por día
+            </div>
+        </div>
+
+        <form action="/config/shifts/update" method="POST">
+            <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">
+                {% for day in calendar %}
+                <div class="card glass"
+                    style="padding: 1rem; border: 1px solid {% if day.weekday == 'Domingo' %}rgba(239, 68, 68, 0.2){% else %}var(--border-color){% endif %}; position: relative; overflow: hidden;">
+                    {% if day.weekday == 'Domingo' %}
+                    <div
+                        style="position: absolute; top: 0; right: 0; background: rgba(239, 68, 68, 0.1); padding: 2px 8px; font-size: 0.6rem; color: #ef4444; font-weight: 700;">
+                        DOM</div>
+                    {% endif %}
+
+                    <div
+                        style="font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; color: {% if day.weekday == 'Domingo' %}#ef4444{% else %}var(--accent-blue){% endif %};">
+                        {{ day.weekday }}
+                    </div>
+                    <div
+                        style="color: #94A3B8; font-size: 0.85rem; margin-bottom: 1rem; font-family: 'Inter', sans-serif;">
+                        {{ day.display_date }}
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <select name="shift_{{ day.date }}" class="input-field"
+                            style="font-size: 0.85rem; padding: 0.5rem; background: rgba(0,0,0,0.2);">
+                            <option value="0" {% if day.hours==0 %}selected{% endif %}>🚫 Cerrado (0h)</option>
+                            <option value="8" {% if day.hours==8 %}selected{% endif %}>🌅 1 Turno (8h)</option>
+                            <option value="16" {% if day.hours==16 %}selected{% endif %}>🏢 2 Turnos (16h)</option>
+                            <option value="24" {% if day.hours==24 %}selected{% endif %}>🌕 3 Turnos (24h)</option>
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div
+                style="margin-top: 3rem; padding: 2rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary"
+                    style="min-width: 250px; display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                    <i class="bi bi-cloud-check" style="font-size: 1.2rem;"></i>
+                    💾 Guardar Calendario de Turnos
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Inventarios Cabuyas Content -->
+    <div id="tab-cabuyas" class="tab-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h3>Inventario de Cabuyas</h3>
+                <p style="color: #94A3B8;">Resumen de existencias, deniers, colores y niveles de seguridad.</p>
+            </div>
+            <div class="glass"
+                style="padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.8rem; color: var(--accent-blue);">
+                <i class="bi bi-box-seam"></i> {{ inventarios_cabuyas|length }} Referencias
+            </div>
+        </div>
+
+        <form action="/config/cabuyas/update" method="POST">
+            <table class="config-table">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Estado</th>
+                        <th>Grupo</th>
+                        <th>Existencia</th>
+                        <th>Denier</th>
+                        <th>Color</th>
+                        <th>Descripción</th>
+                        <th style="width: 150px;">Inv. Seguridad</th>
+                        <th>Requerimientos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inventarios_cabuyas %}
+                    <tr>
+                        <td style="font-weight: 700; color: var(--accent-blue);">{{ item.codigo }}</td>
+                        <td><span class="badge"
+                                style="background: {% if item.estado and item.estado|upper == 'AC' %}rgba(34, 197, 94, 0.1){% else %}rgba(148, 163, 184, 0.1){% endif %}; color: {% if item.estado and item.estado|upper == 'AC' %}#22c55e{% else %}#94a3b8{% endif %};">{{
+                                item.estado or 'IN' }}</span></td>
+                        <td>{{ item.grupo or '-' }}</td>
+                        <td style="font-weight: 600;">{{ "{:,.2f}".format(item.existencia or 0) }}</td>
+                        <td style="font-weight: 600; color: var(--accent-blue);">{{ item.denier or '-' }}</td>
+                        <td>{{ item.color or '-' }}</td>
+                        <td style="font-size: 0.85rem; max-width: 250px;">{{ item.descripcion or '-' }}</td>
+                        <td>
+                            <input type="number" step="1" name="sec_{{ item.codigo }}" class="input-field"
+                                value="{{ item.inventario_seguridad or 0 }}"
+                                style="font-weight: 700; text-align: center; color: var(--accent-blue); background: rgba(0,0,0,0.1);">
+                        </td>
+                        <td
+                            style="font-weight: 700; color: {% if (item.requerimientos or 0) < 0 %}#ef4444{% else %}var(--success){% endif %};">
+                            {{ "{:,.2f}".format(item.requerimientos or 0) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not inventarios_cabuyas %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 4rem; color: #94A3B8;">
+                            No hay datos de inventario disponibles.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary" style="min-width: 200px;">
+                    <i class="bi bi-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function switchTab(tabId, el) {
+        // Nav
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+
+        // Content
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    function selectMachine(machineId, el) {
+        // Buttons
+        document.querySelectorAll('.machine-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+
+        // Panes
+        document.getElementById('torsion-placeholder').style.display = 'none';
+        document.querySelectorAll('.machine-config-pane').forEach(p => p.style.display = 'none');
+        document.getElementById('machine-config-' + machineId).style.display = 'block';
+    }
+
+    function calculateKgh(input, denierName, machineId) {
+        const row = input.closest('tr');
+        const denierSafe = denierName.replace(' ', '_');
+
+        const rpm = parseFloat(row.querySelector(`input[name="rpm_${denierSafe}"]`).value) || 0;
+        const torsiones = parseFloat(row.querySelector(`input[name="torsiones_${denierSafe}"]`).value) || 0;
+        const husos = parseInt(row.querySelector(`input[name="husos_${denierSafe}"]`).value) || 0;
+
+        const denier = parseFloat(denierName.split(' ')[0]);
+        const display = document.getElementById(`kgh-${machineId}-${denierSafe}`);
+
+        if (rpm > 0 && torsiones > 0 && husos > 0) {
+            const kgh = (rpm / torsiones) * 60 * (denier / 9000000) * husos;
+            display.innerText = kgh.toFixed(2);
+        } else {
+            display.innerText = '-';
+        }
+    }
+
+    function calculateRewinder(input, denierName) {
+        const row = input.closest('tr');
+        const denierSafe = denierName.replace(' ', '_');
+
+        const mp = parseFloat(row.querySelector(`input[name="mp_${denierSafe}"]`).value) || 0;
+        const tm = parseFloat(row.querySelector(`input[name="tm_${denierSafe}"]`).value) || 0;
+        const denierNum = parseFloat(denierName.split(' ')[0]) || 0;
+
+        const displayN = document.getElementById(`n-${denierSafe}`);
+        const displayKgh = document.getElementById(`kgh-rw-${denierSafe}`);
+
+        if (mp > 0 && tm > 0) {
+            const n = tm / (mp / 60);
+            displayN.innerText = Math.round(n);
+
+            // Corrected Formula: (60 / TM) * 0.8
+            // Values in image (2000 denier, 13.1 TM) should result in ~3.66 Kg/h
+            const kgh = (60 / tm) * 0.8;
+            displayKgh.innerText = kgh.toFixed(2);
+        } else {
+            displayN.innerText = '-';
+            displayKgh.innerText = '-';
+        }
+    }
+
+    // Auto-switch tab from URL parameter
+    window.addEventListener('DOMContentLoaded', (event) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (tab) {
+            const tabEl = document.querySelector(`.tab-item[onclick*="'${tab}'"]`);
+            if (tabEl) {
+                switchTab(tab, tabEl);
+            }
+        }
+    });
+</script>
+{% endblock %}

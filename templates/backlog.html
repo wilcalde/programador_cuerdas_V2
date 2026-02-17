@@ -1,119 +1,171 @@
 {% extends "base.html" %}
 
-{% block header_title %}Backlog{% endblock %}
+{% block header_title %}📋 Backlog de Pedidos{% endblock %}
 
 {% block content %}
-<h2 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Backlog de Requerimientos</h2>
-
-<!-- Summary -->
-<div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
-    <div class="card glass" style="text-align: center;">
-        <div style="font-size: 0.8rem; color: #94A3B8;">Total Kg Pendientes</div>
-        <div style="font-size: 1.8rem; font-weight: 800; color: #38BDF8;">{{ '{:,.0f}'.format(total_pending_kg) }}</div>
+<!-- Resumen de Totales -->
+<div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+    <div class="card glass" style="flex: 1; text-align: center; border-bottom: 3px solid #ef4444;">
+        <p style="color: #94A3B8; margin-bottom: 0.5rem; font-size: 0.9rem;">Total Faltantes</p>
+        <h2 style="color: #ef4444; margin: 0;">{{ "{:,.2f}".format((total_pending_kg or 0)) }} kg</h2>
     </div>
-    <div class="card glass" style="text-align: center;">
-        <div style="font-size: 0.8rem; color: #94A3B8;">Total Horas Proceso</div>
-        <div style="font-size: 1.8rem; font-weight: 800; color: #A78BFA;">{{ '{:,.1f}'.format(total_h_proceso) }}</div>
-    </div>
-    <div class="card glass" style="text-align: center;">
-        <div style="font-size: 0.8rem; color: #94A3B8;">Referencias</div>
-        <div style="font-size: 1.8rem; font-weight: 800; color: #10B981;">{{ backlog_list|length }}</div>
+    <div class="card glass" style="flex: 1; text-align: center; border-bottom: 3px solid var(--accent-blue);">
+        <p style="color: #94A3B8; margin-bottom: 0.5rem; font-size: 0.9rem;">Items Pendientes</p>
+        <h2 style="color: var(--accent-blue); margin: 0;">{{ backlog_list|length }}</h2>
     </div>
 </div>
 
-<!-- Backlog Table -->
-<div class="card glass" style="overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-        <thead>
-            <tr style="color: var(--accent-blue); border-bottom: 2px solid var(--border-color);">
-                <th style="padding: 0.75rem;">Código</th>
-                <th style="padding: 0.75rem;">Descripción</th>
-                <th style="padding: 0.75rem;">Kg Requeridos</th>
-                <th style="padding: 0.75rem;">H. Proceso</th>
-                <th style="padding: 0.75rem;">Origen</th>
-                <th style="padding: 0.75rem;">Prioridad</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in backlog_list %}
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 0.75rem; font-weight: 600;">{{ item.codigo }}</td>
-                <td style="padding: 0.75rem;">{{ item.descripcion }}</td>
-                <td style="padding: 0.75rem; font-weight: 700;">{{ '{:,.0f}'.format(item.requerimientos) }} kg</td>
-                <td style="padding: 0.75rem;">{{ '{:,.1f}'.format(item.h_proceso) }} h</td>
-                <td style="padding: 0.75rem;">
-                    <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: {{ '#1E3A5F' if item.origen == 'Automatico' else '#3B1F5E' }}; color: {{ '#38BDF8' if item.origen == 'Automatico' else '#A78BFA' }};">
-                        {{ item.origen }}
-                    </span>
-                </td>
-                <td style="padding: 0.75rem;">
-                    {% if item.prioridad %}
-                    <span style="color: #F59E0B;">⭐ Prioridad</span>
-                    {% else %}
-                    <span style="color: #94A3B8;">Normal</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Sección de Requerimientos Pendientes -->
+<div class="card glass" style="margin-bottom: 2.5rem; border-left: 4px solid var(--accent-blue);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="color: var(--accent-blue); margin: 0;">⚠️ Requerimientos Pendientes de Inventario</h3>
+        <span style="font-size: 0.8rem; color: #94A3B8;">Basado en Existencias vs Inv. Seguridad</span>
+    </div>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); color: #94A3B8;">
+                    <th style="padding: 0.75rem;">Código</th>
+                    <th style="padding: 0.75rem;">Descripción</th>
+                    <th style="padding: 0.75rem;">Faltante (KG)</th>
+                    <th style="padding: 0.75rem;">h_proceso</th>
+                    <th style="padding: 0.75rem; text-align: center;">Prioridad</th>
+                    <th style="padding: 0.75rem; text-align: center;">Origen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in backlog_list %}
+                <tr
+                    style="border-bottom: 1px solid rgba(255,255,255,0.05); {% if item.origen == 'Manual' %}background: rgba(var(--accent-blue-rgb), 0.05);{% endif %}">
+                    <td style="padding: 0.75rem; font-weight: 700;">{{ item.codigo }}</td>
+                    <td style="padding: 0.75rem;">
+                        {{ item.descripcion }}
+                        {% if item.origen == 'Manual' %}
+                        <span
+                            style="font-size: 0.7rem; background: var(--accent-blue); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">MANUAL</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; color: #ef4444; font-weight: 700;">
+                        {{ "{:,.2f}".format(item.requerimientos) }} kg
+                    </td>
+                    <td style="padding: 0.75rem; font-weight: 700; color: var(--accent-blue);">
+                        {{ "{:,.2f}".format(item.h_proceso or 0) }} h
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        {% if item.origen == 'Automatico' %}
+                        <input type="checkbox" class="priority-check" data-codigo="{{ item.codigo }}" {% if
+                            item.prioridad %}checked{% endif %} style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                        {% else %}
+                        <span title="Pedido Manual"> ⭐ </span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <span
+                            style="color: {% if item.origen == 'Manual' %}var(--accent-blue){% else %}#94A3B8{% endif %}; font-size: 0.8rem;">
+                            {{ item.origen }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if backlog_list %}
+                <!-- Fila de Totalización -->
+                <tr
+                    style="border-top: 2px solid var(--border-color); background: rgba(255,255,255,0.02); font-weight: 800;">
+                    <td colspan="2" style="padding: 1rem; text-align: right; color: #94A3B8;">TOTAL:</td>
+                    <td style="padding: 1rem; color: #ef4444;">{{ "{:,.2f}".format(total_pending_kg) }} kg</td>
+                    <td style="padding: 1rem; color: var(--accent-blue);">{{ "{:,.2f}".format(total_h_proceso) }} h</td>
+                    <td colspan="2"></td>
+                </tr>
+                {% endif %}
+                {% if not backlog_list %}
+                <tr>
+                    <td colspan="6" style="padding: 2rem; text-align: center; color: #94A3B8;">No hay requerimientos
+                        pendientes.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<!-- Add Manual Order -->
-<div class="card glass" style="margin-top: 2rem;">
-    <h3 style="color: var(--accent-blue); margin-bottom: 1rem;">Agregar Pedido Manual</h3>
-    <form method="POST" action="{{ url_for('add_backlog') }}">
-        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div>
-                <label class="form-label">Producto (Código Cabuya)</label>
-                <select name="cabuya_codigo" class="form-control" required>
-                    <option value="">Seleccionar producto...</option>
-                    {% for cabuya in inventarios_cabuyas %}
-                    <option value="{{ cabuya.codigo }}">{{ cabuya.codigo }} - {{ cabuya.descripcion }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label class="form-label">Kilogramos</label>
-                <input type="number" name="kg" class="form-control" step="0.1" min="0" required>
-            </div>
+<!-- Formulario Manual de Pedido Simplificado -->
+<div class="card glass" style="margin-bottom: 2rem;">
+    <h3 style="color: var(--accent-blue); margin-top: 0;">➕ Añadir Nuevo Pedido</h3>
+    <form action="/backlog/add" method="POST" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 250px;">
+            <label style="display: block; margin-bottom: 0.5rem; color: #94A3B8;">Código Cabuya / Producto</label>
+            <select name="cabuya_codigo" id="cabuya_codigo" class="input-glass" required>
+                <option value="">Seleccionar producto...</option>
+                {% for item in inventarios_cabuyas %}
+                <option value="{{ item.codigo }}">{{ item.codigo }} - {{ item.descripcion }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Agregar Pedido</button>
+        <div style="flex: 1; min-width: 150px;">
+            <label style="display: block; margin-bottom: 0.5rem; color: #94A3B8;">Kilogramos</label>
+            <input type="number" step="0.01" name="kg" id="order_kg" class="input-glass" placeholder="Ej: 3000"
+                required>
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 45px;">Guardar Pedido</button>
+        </div>
     </form>
 </div>
 
-<!-- Manual Orders List -->
-{% if orders %}
-<div class="card glass" style="margin-top: 2rem;">
-    <h3 style="color: var(--accent-blue); margin-bottom: 1rem;">Pedidos Manuales</h3>
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="color: var(--accent-blue); border-bottom: 2px solid var(--border-color);">
-                <th style="padding: 0.75rem;">ID</th>
-                <th style="padding: 0.75rem;">Denier</th>
-                <th style="padding: 0.75rem;">Kg</th>
-                <th style="padding: 0.75rem;">Producto</th>
-                <th style="padding: 0.75rem;">Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in orders %}
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 0.75rem; font-size: 0.8rem;">{{ order.id[:8] }}...</td>
-                <td style="padding: 0.75rem;">{{ order.deniers.name if order.deniers else 'N/A' }}</td>
-                <td style="padding: 0.75rem; font-weight: 600;">{{ order.total_kg }} kg</td>
-                <td style="padding: 0.75rem;">{{ order.cabuya_codigo or 'N/A' }}</td>
-                <td style="padding: 0.75rem;">
-                    <form method="POST" action="{{ url_for('delete_backlog', order_id=order.id) }}" style="display: inline;">
-                        <button type="submit" class="btn" style="background: #7F1D1D; color: #FCA5A5; padding: 0.3rem 0.6rem; font-size: 0.75rem; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="bi bi-trash"></i> Eliminar
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
+<style>
+    .priority-check:checked {
+        accent-color: var(--accent-blue);
+    }
+
+    .input-glass {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: white;
+    }
+
+    .input-glass:focus {
+        border-color: var(--accent-blue);
+        outline: none;
+    }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.priority-check').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            const codigo = this.getAttribute('data-codigo');
+            const prioridad = this.checked;
+
+            fetch('/config/cabuyas/priority', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    codigo: codigo,
+                    prioridad: prioridad
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log(`Prioridad actualizada para ${codigo}`);
+                    } else {
+                        alert('Error al actualizar prioridad: ' + (data.error || 'Desconocido'));
+                        this.checked = !prioridad;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Fallo la conexión con el servidor');
+                    this.checked = !prioridad;
+                });
+        });
+    });
+</script>
 {% endblock %}
