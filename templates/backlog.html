@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block header_title %}Backlog{% endblock %}
+
+{% block content %}
+<h2 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Backlog de Requerimientos</h2>
+
+<!-- Summary -->
+<div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+    <div class="card glass" style="text-align: center;">
+        <div style="font-size: 0.8rem; color: #94A3B8;">Total Kg Pendientes</div>
+        <div style="font-size: 1.8rem; font-weight: 800; color: #38BDF8;">{{ '{:,.0f}'.format(total_pending_kg) }}</div>
+    </div>
+    <div class="card glass" style="text-align: center;">
+        <div style="font-size: 0.8rem; color: #94A3B8;">Total Horas Proceso</div>
+        <div style="font-size: 1.8rem; font-weight: 800; color: #A78BFA;">{{ '{:,.1f}'.format(total_h_proceso) }}</div>
+    </div>
+    <div class="card glass" style="text-align: center;">
+        <div style="font-size: 0.8rem; color: #94A3B8;">Referencias</div>
+        <div style="font-size: 1.8rem; font-weight: 800; color: #10B981;">{{ backlog_list|length }}</div>
+    </div>
+</div>
+
+<!-- Backlog Table -->
+<div class="card glass" style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr style="color: var(--accent-blue); border-bottom: 2px solid var(--border-color);">
+                <th style="padding: 0.75rem;">Código</th>
+                <th style="padding: 0.75rem;">Descripción</th>
+                <th style="padding: 0.75rem;">Kg Requeridos</th>
+                <th style="padding: 0.75rem;">H. Proceso</th>
+                <th style="padding: 0.75rem;">Origen</th>
+                <th style="padding: 0.75rem;">Prioridad</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in backlog_list %}
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 0.75rem; font-weight: 600;">{{ item.codigo }}</td>
+                <td style="padding: 0.75rem;">{{ item.descripcion }}</td>
+                <td style="padding: 0.75rem; font-weight: 700;">{{ '{:,.0f}'.format(item.requerimientos) }} kg</td>
+                <td style="padding: 0.75rem;">{{ '{:,.1f}'.format(item.h_proceso) }} h</td>
+                <td style="padding: 0.75rem;">
+                    <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: {{ '#1E3A5F' if item.origen == 'Automatico' else '#3B1F5E' }}; color: {{ '#38BDF8' if item.origen == 'Automatico' else '#A78BFA' }};">
+                        {{ item.origen }}
+                    </span>
+                </td>
+                <td style="padding: 0.75rem;">
+                    {% if item.prioridad %}
+                    <span style="color: #F59E0B;">⭐ Prioridad</span>
+                    {% else %}
+                    <span style="color: #94A3B8;">Normal</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Manual Order -->
+<div class="card glass" style="margin-top: 2rem;">
+    <h3 style="color: var(--accent-blue); margin-bottom: 1rem;">Agregar Pedido Manual</h3>
+    <form method="POST" action="{{ url_for('add_backlog') }}">
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+                <label class="form-label">Producto (Código Cabuya)</label>
+                <select name="cabuya_codigo" class="form-control" required>
+                    <option value="">Seleccionar producto...</option>
+                    {% for cabuya in inventarios_cabuyas %}
+                    <option value="{{ cabuya.codigo }}">{{ cabuya.codigo }} - {{ cabuya.descripcion }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Kilogramos</label>
+                <input type="number" name="kg" class="form-control" step="0.1" min="0" required>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Agregar Pedido</button>
+    </form>
+</div>
+
+<!-- Manual Orders List -->
+{% if orders %}
+<div class="card glass" style="margin-top: 2rem;">
+    <h3 style="color: var(--accent-blue); margin-bottom: 1rem;">Pedidos Manuales</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="color: var(--accent-blue); border-bottom: 2px solid var(--border-color);">
+                <th style="padding: 0.75rem;">ID</th>
+                <th style="padding: 0.75rem;">Denier</th>
+                <th style="padding: 0.75rem;">Kg</th>
+                <th style="padding: 0.75rem;">Producto</th>
+                <th style="padding: 0.75rem;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 0.75rem; font-size: 0.8rem;">{{ order.id[:8] }}...</td>
+                <td style="padding: 0.75rem;">{{ order.deniers.name if order.deniers else 'N/A' }}</td>
+                <td style="padding: 0.75rem; font-weight: 600;">{{ order.total_kg }} kg</td>
+                <td style="padding: 0.75rem;">{{ order.cabuya_codigo or 'N/A' }}</td>
+                <td style="padding: 0.75rem;">
+                    <form method="POST" action="{{ url_for('delete_backlog', order_id=order.id) }}" style="display: inline;">
+                        <button type="submit" class="btn" style="background: #7F1D1D; color: #FCA5A5; padding: 0.3rem 0.6rem; font-size: 0.75rem; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="bi bi-trash"></i> Eliminar
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
